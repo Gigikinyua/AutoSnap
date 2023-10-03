@@ -1,9 +1,11 @@
 package com.jemimah.autosnap;
 
+import android.app.Dialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -19,12 +21,15 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.preference.PreferenceManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -57,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextureView textureView;
     private Button captureButton;
-    private ImageView btnSwitch;
+    private ImageView btnSwitch, btnChangeIPAddress;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
     static {
@@ -87,16 +92,48 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        setIPAddress();
+
         textureView = findViewById(R.id.textureView);
         assert textureView != null;
         textureView.setSurfaceTextureListener(textureListener);
         captureButton = findViewById(R.id.captureButton);
         btnSwitch = findViewById(R.id.btnSwitch);
+        btnChangeIPAddress = findViewById(R.id.btnChangeIPAddress);
+
+        btnChangeIPAddress.setOnClickListener(v -> setIPAddress());
 
 //        captureButton.setOnClickListener(view -> initiateCapture(5, 5000));
         captureButton.setOnClickListener(view -> capturePicture());
 
         btnSwitch.setOnClickListener(v -> switchCamera());
+    }
+
+    private void setIPAddress() {
+        Dialog dialog = new Dialog(MainActivity.this);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        dialog.setContentView(R.layout.dialog_set_ip_address);
+
+        EditText edtAddress = dialog.findViewById(R.id.edtAddress);
+
+        Button btnSubmit = dialog.findViewById(R.id.btnSubmit);
+
+        btnSubmit.setOnClickListener(v1 -> {
+            if (!TextUtils.isEmpty(edtAddress.getText().toString())) {
+                runOnUiThread(() -> {
+                    PreferenceManager.getDefaultSharedPreferences(this)
+                            .edit()
+                            .putString("IP_ADDRESS", edtAddress.getText().toString())
+                            .apply();
+
+                    dialog.dismiss();
+
+                    Toast.makeText(this, "IP Address set successfully", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+
+        dialog.show();
     }
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
@@ -380,7 +417,7 @@ public class MainActivity extends AppCompatActivity {
                     super.onCaptureCompleted(session, request, result);
 
                     uploadImage(file);
-                    Toast.makeText(MainActivity.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
+//                    Toast.makeText(MainActivity.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
                     createCameraPreview();
                 }
             };
